@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/auth/**
+        - id: trip-service
+          uri: lb://TRIP-SERVICE
+          predicates:
+            - Path=/trips/**
+        - id: booking-service
+          uri: lb://BOOKING-SERVICE
+          predicates:
+            - Path=/bookings/**
+        - id: dispatch-service
+          uri: lb://DISPATCH-SERVICE
+          predicates:
+            - Path=/dispatch/**

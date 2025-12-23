@@ -1,0 +1,17 @@
+server:
+  port: 0
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://mongo:27017/trip_db # Default DB, services can override name
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    preferIpAddress: true
