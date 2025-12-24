@@ -10,6 +10,6 @@ Write-Host "2. Ejecutar el siguiente comando para forzar el cierre de TODOS los 
 Write-Host "   Stop-Process -Name java -Force -ErrorAction SilentlyContinue" -ForegroundColor Red
 
 # Descomenta la siguiente línea si quieres que el script cierre todo automáticamente (Riesgoso)
-# Stop-Process -Name java -Force -ErrorAction SilentlyContinue
+Stop-Process -Name java -Force -ErrorAction SilentlyContinue
 
 Write-Host "Entorno detenido (Docker)." -ForegroundColor Green

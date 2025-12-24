@@ -12,7 +12,7 @@ function Start-Service {
     )
     Write-Host "Lanzando $ServiceName..." -ForegroundColor Cyan
     # Abre una nueva ventana de PowerShell y ejecuta el servicio
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd $Path; mvn spring-boot:run"
+    Start-Process powershell -ArgumentList "-Command", "cd $Path; mvn spring-boot:run 2>&1 | Tee-Object -FilePath $Path\auth.log"
     Start-Sleep -Seconds 5 # Espera un poco entre servicios para evitar sobrecarga inicial
 }
 
@@ -24,7 +24,8 @@ Start-Service -ServiceName "Config Server" -Path "$Root\Config-Server"
 Start-Sleep -Seconds 10 # Esperar a que Eureka y Config arranquen bien
 
 # 2. Gateway
-Start-Service -ServiceName "API Gateway" -Path "$Root\Api-Gateway"
+# 2. Gateway
+Start-Process powershell -ArgumentList "-Command", "cd $Root\Api-Gateway; mvn spring-boot:run 2>&1 | Tee-Object -FilePath $Root\Api-Gateway\gateway.log"
 
 # 3. Servicios Core (Landing Page)
 Start-Service -ServiceName "Auth Service" -Path "$Root\Auth-Service"

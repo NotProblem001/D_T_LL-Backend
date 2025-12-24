@@ -19,14 +19,17 @@ public class AuthConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
+        System.out.println("DEBUG: Creating UserDetailsService bean");
         return new CustomUserDetailsService();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.csrf(csrf -> csrf.disable())
+        return http
+                .csrf(csrf -> csrf.disable())
+                // CORS handled by Gateway
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/register", "/auth/token", "/auth/validate", "/auth/google").permitAll()
+                        .requestMatchers("/auth/**").permitAll() // Broaden to match any /auth path
                         .anyRequest().authenticated())
                 .build();
     }

@@ -4,7 +4,7 @@ server:
 spring:
   data:
     mongodb:
-      uri: mongodb://mongo:27017/trip_db # Default DB, services can override name
+      uri: mongodb://localhost:27017/db_transport_db # Default DB, services can override name
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher

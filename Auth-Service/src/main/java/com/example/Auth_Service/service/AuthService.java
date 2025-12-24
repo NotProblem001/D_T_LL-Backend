@@ -31,4 +31,19 @@ public class AuthService {
     public void validateToken(String token) {
         jwtUtil.validateToken(token);
     }
+
+    public String registerOrLoginGoogleUser(String email, String name) {
+        java.util.Optional<User> existingUser = repository.findByEmail(email);
+        if (existingUser.isPresent()) {
+            return generateToken(email);
+        } else {
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setName(name);
+            newUser.setPassword(passwordEncoder.encode("google-oauth-dummy-password")); // Dummy password
+            newUser.setRoles(java.util.List.of("ROLE_USER"));
+            repository.save(newUser);
+            return generateToken(email);
+        }
+    }
 }
