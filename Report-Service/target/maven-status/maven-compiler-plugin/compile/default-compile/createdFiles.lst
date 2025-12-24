@@ -1,0 +1,8 @@
+com\example\Report_Service\ReportServiceApplication.class
+com\example\Report_Service\controller\ReportController.class
+com\example\Report_Service\repository\ReportRepository.class
+com\example\Report_Service\service\ReportService.class
+com\example\Report_Service\model\Report$ReportBuilder.class
+com\example\Report_Service\model\ReporterType.class
+com\example\Report_Service\model\ReportStatus.class
+com\example\Report_Service\model\Report.class

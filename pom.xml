@@ -25,6 +25,7 @@
 		<module>Dispatch-Service</module>
 		<module>Eureka-Server</module>
 		<module>Notification-Service</module>
+		<module>Report-Service</module>
 		<module>Telemetry-Service</module>
 		<module>Trip-Service</module>
 	</modules>
