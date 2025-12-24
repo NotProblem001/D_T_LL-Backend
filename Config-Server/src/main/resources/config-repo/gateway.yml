@@ -25,3 +25,13 @@ spring:
           uri: lb://DISPATCH-SERVICE
           predicates:
             - Path=/dispatch/**
+        - id: report-service
+          uri: lb://REPORT-SERVICE
+          predicates:
+            - Path=/reports/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"

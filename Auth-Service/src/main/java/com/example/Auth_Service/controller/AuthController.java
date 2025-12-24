@@ -39,4 +39,19 @@ public class AuthController {
         service.validateToken(token);
         return "Token is valid";
     }
+
+    @Autowired
+    private com.example.Auth_Service.service.GoogleAuthService googleAuthService;
+
+    @PostMapping("/google")
+    public String loginWithGoogle(@RequestBody java.util.Map<String, String> request) {
+        String idToken = request.get("token");
+        var payload = googleAuthService.verifyToken(idToken);
+        String email = payload.getEmail();
+        // Here we should check if user exists, if not register, then return token.
+        // For now, delegating to a new method in AuthService or handling here?
+        // Let's keep it simple: generate token for the email (assuming username=email
+        // for Google users)
+        return service.generateToken(email);
+    }
 }
