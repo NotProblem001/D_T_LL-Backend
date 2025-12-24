@@ -46,4 +46,18 @@ public class AuthService {
             return generateToken(email);
         }
     }
+
+    public User updateUser(User userUpdates) {
+        User existingUser = repository.findByEmail(userUpdates.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (userUpdates.getName() != null)
+            existingUser.setName(userUpdates.getName());
+        if (userUpdates.getPhoneNumber() != null)
+            existingUser.setPhoneNumber(userUpdates.getPhoneNumber());
+        if (userUpdates.getRut() != null)
+            existingUser.setRut(userUpdates.getRut());
+
+        return repository.save(existingUser);
+    }
 }

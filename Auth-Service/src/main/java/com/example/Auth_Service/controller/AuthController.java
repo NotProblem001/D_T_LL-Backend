@@ -58,4 +58,11 @@ public class AuthController {
         String name = (String) payload.get("name"); // Extract name from payload
         return authService.registerOrLoginGoogleUser(email, name);
     }
+
+    @PutMapping("/update")
+    public String updateUser(@RequestBody User user) {
+        log.info("Update request for user: {}", user.getEmail());
+        authService.updateUser(user);
+        return "User updated successfully";
+    }
 }
