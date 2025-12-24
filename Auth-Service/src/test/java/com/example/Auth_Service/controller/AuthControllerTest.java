@@ -42,7 +42,7 @@ public class AuthControllerTest {
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status.isOk())
+                .andExpect(status().isOk())
                 .andExpect(content().string("User added to the system"));
     }
 
