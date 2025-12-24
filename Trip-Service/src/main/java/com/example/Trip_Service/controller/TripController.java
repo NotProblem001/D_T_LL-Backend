@@ -16,7 +16,7 @@ public class TripController {
 
     @PostMapping
     public Trip createTrip(@RequestBody Trip trip) {
-        return service.saveTrip(trip);
+        return service.startTrip(trip);
     }
 
     @GetMapping
@@ -29,8 +29,13 @@ public class TripController {
         return service.getTripById(id);
     }
 
-    @PostMapping("/{id}/reserve")
-    public boolean reserveSeats(@PathVariable String id, @RequestParam int seats) {
-        return service.reserveSeats(id, seats);
+    @PostMapping("/start")
+    public Trip startTrip(@RequestBody Trip trip) {
+        return service.startTrip(trip);
+    }
+
+    @PostMapping("/{id}/end")
+    public Trip endTrip(@PathVariable String id) {
+        return service.endTrip(id);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.Trip_Service.model;
+package com.example.Dispatch_Service.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,15 +10,13 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "trips")
-public class Trip {
+@Document(collection = "dispatches")
+public class Dispatch {
     @Id
     private String id;
     private String bookingId;
+    private String vehicleId;
     private String driverId;
-    private String passengerId;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private TripStatus status;
-    private Location currentLocation;
+    private DispatchStatus status;
+    private LocalDateTime dispatchedAt = LocalDateTime.now();
 }

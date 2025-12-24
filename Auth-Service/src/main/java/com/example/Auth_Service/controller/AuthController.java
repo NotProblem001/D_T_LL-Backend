@@ -1,6 +1,6 @@
 package com.example.Auth_Service.controller;
 
-import com.example.Auth_Service.model.UserCredential;
+import com.example.Auth_Service.model.User;
 import com.example.Auth_Service.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,16 +19,16 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
 
     @PostMapping("/register")
-    public String addNewUser(@RequestBody UserCredential user) {
+    public String addNewUser(@RequestBody User user) {
         return service.saveUser(user);
     }
 
     @PostMapping("/token")
-    public String getToken(@RequestBody UserCredential userCredential) {
+    public String getToken(@RequestBody User user) {
         Authentication authenticate = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(userCredential.getName(), userCredential.getPassword()));
+                new UsernamePasswordAuthenticationToken(user.getName(), user.getPassword()));
         if (authenticate.isAuthenticated()) {
-            return service.generateToken(userCredential.getName());
+            return service.generateToken(user.getName());
         } else {
             throw new RuntimeException("invalid access");
         }

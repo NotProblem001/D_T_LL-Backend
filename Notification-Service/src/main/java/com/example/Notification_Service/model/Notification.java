@@ -1,4 +1,4 @@
-package com.example.Booking_Service.model;
+package com.example.Notification_Service.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,16 +10,14 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "bookings")
-public class Booking {
+@Document(collection = "notifications")
+public class Notification {
     @Id
     private String id;
-    private String passengerId;
-    private Location origin;
-    private Location destination;
-    private BookingStatus status;
-    private Double estimatedPrice;
-    private PaymentMethod paymentMethod;
+    private String recipient; // Email or Phone
+    private String message;
+    private NotificationType type;
+    private NotificationStatus status;
     private LocalDateTime createdAt = LocalDateTime.now();
-    private String driverId; // Assigned driver
+    private String bookingId; // Optional reference
 }

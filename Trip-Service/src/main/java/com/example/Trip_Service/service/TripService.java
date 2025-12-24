@@ -1,10 +1,12 @@
 package com.example.Trip_Service.service;
 
 import com.example.Trip_Service.model.Trip;
+import com.example.Trip_Service.model.TripStatus;
 import com.example.Trip_Service.repository.TripRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.Trip_Service.client.DispatchClient;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,8 +16,27 @@ public class TripService {
     @Autowired
     private TripRepository repository;
 
-    public Trip saveTrip(Trip trip) {
-        trip.setStatus("scheduled");
+    @Autowired
+    private DispatchClient dispatchClient;
+
+    public Trip startTrip(Trip trip) {
+        trip.setStatus(TripStatus.STARTED);
+        trip.setStartTime(java.time.LocalDateTime.now());
+        return repository.save(trip);
+    }
+
+    public Trip endTrip(String id) {
+        Trip trip = getTripById(id);
+        trip.setStatus(TripStatus.ENDED);
+        trip.setEndTime(java.time.LocalDateTime.now());
+
+        // Release driver
+        try {
+            dispatchClient.updateVehicleStatus(trip.getDriverId(), "AVAILABLE");
+        } catch (Exception e) {
+            System.err.println("Failed to release driver: " + e.getMessage());
+        }
+
         return repository.save(trip);
     }
 
@@ -25,15 +46,5 @@ public class TripService {
 
     public Trip getTripById(String id) {
         return repository.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
-    }
-
-    public boolean reserveSeats(String tripId, int seats) {
-        Trip trip = getTripById(tripId);
-        if (trip.getAvailableSeats() >= seats) {
-            trip.setAvailableSeats(trip.getAvailableSeats() - seats);
-            repository.save(trip);
-            return true;
-        }
-        return false;
     }
 }
