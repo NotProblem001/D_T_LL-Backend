@@ -6,18 +6,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import com.dtll.backend.model.enums.EstadoAsistencia;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "asistencia_checklist")
+@Table(name = "viaje_paradas")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AsistenciaChecklist {
+public class ViajeParada {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -31,16 +30,21 @@ public class AsistenciaChecklist {
     @JoinColumn(name = "pasajero_id", nullable = false)
     private Pasajero pasajero;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", length = 20)
-    @Builder.Default
-    private EstadoAsistencia estado = EstadoAsistencia.PENDIENTE;
+    @Column(name = "orden_parada", nullable = false)
+    private Integer ordenParada;
 
-    @Column(name = "hora_marcaje")
-    private LocalDateTime horaMarcaje;
+    @Column(name = "distancia_acumulada_m")
+    private Double distanciaAcumuladaM;
 
-    @Column(name = "observaciones", columnDefinition = "TEXT")
-    private String observaciones;
+    @Column(name = "tiempo_estimado_seg")
+    private Integer tiempoEstimadoSeg;
+
+    // Snapshot de la ubicación del pasajero al momento de optimizar (puede diferir de la dirección actual).
+    @Column(name = "latitud_snapshot")
+    private Double latitudSnapshot;
+
+    @Column(name = "longitud_snapshot")
+    private Double longitudSnapshot;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

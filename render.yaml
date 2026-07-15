@@ -1,0 +1,74 @@
+services:
+  - type: web
+    name: dtll-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: dtll-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dtll-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: dtll-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: dtll-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dtll-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        sync: false # URLs de Vercel de Admin/Dashboard/Landing-Page, separadas por coma
+      - key: OSRM_URL
+        fromService:
+          type: pserv
+          name: dtll-osrm
+          property: hostport
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_REDIRECT_URI
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
+
+  # Servicio privado de ruteo. Render no soporta descargar el extracto OSM durante el build del
+  # blueprint: el disco debe seedearse manualmente una vez (ver "Preprocesar el extracto de OSRM"
+  # en el README) subiendo /data/chile-latest.osrm.* al disco persistente antes de habilitar el servicio.
+  - type: pserv
+    name: dtll-osrm
+    runtime: image
+    image:
+      url: docker.io/osrm/osrm-backend:latest
+    dockerCommand: osrm-routed --algorithm mld /data/chile-latest.osrm
+    plan: starter
+    disk:
+      name: dtll-osrm-data
+      mountPath: /data
+      sizeGB: 10
+
+databases:
+  # Nota: si el plan de Postgres administrado de Render no habilita la extensión PostGIS,
+  # usar en su lugar un proveedor externo compatible (Neon, Supabase): quitar los 5 bindings
+  # fromDatabase de dtll-backend y setear DATABASE_URL manualmente con el JDBC URL completo
+  # (jdbc:postgresql://host:puerto/db?sslmode=require) como variable sync:false.
+  - name: dtll-db
+    plan: starter
+    databaseName: dtll_db
+    user: dtll

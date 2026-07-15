@@ -1,0 +1,39 @@
+name: Backend CI/CD - DTLL Backend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' # Cachea dependencias de Maven para acelerar el pipeline
+
+      - name: Ejecutar Tests y compilar (Build)
+        run: mvn clean package
+
+  deploy-to-render:
+    needs: build-and-test # Este job DEPENDE de que build-and-test pase con éxito
+    runs-on: ubuntu-latest
+    # Solo despliega si es un push a main (evita desplegar automáticamente en Pull Requests)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Disparar Despliegue en Render (Deploy Hook)
+        # Usamos curl para llamar a la URL única del webhook de Render
+        # La variable de entorno RENDER_DEPLOY_HOOK la inyectaremos en GitHub Secrets
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}

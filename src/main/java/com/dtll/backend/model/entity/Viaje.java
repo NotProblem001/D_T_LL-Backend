@@ -6,12 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import com.dtll.backend.model.enums.Jornada;
-import com.dtll.backend.model.enums.TipoTrayecto;
 import com.dtll.backend.model.enums.EstadoViaje;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "viajes")
@@ -22,34 +22,37 @@ import java.time.LocalDateTime;
 public class Viaje {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(name = "codigo_ruta", length = 20, nullable = false, unique = true)
-    private String codigoRuta;
+    @Column(name = "codigo_ruta_login", length = 20, nullable = false, unique = true)
+    private String codigoRutaLogin;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
-    private EmpresaCliente empresa;
+    private EmpresaCliente empresaCliente;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conductor_id", nullable = false)
     private Conductor conductor;
 
-    @Column(name = "fecha_viaje", nullable = false)
-    private LocalDate fechaViaje;
+    @Column(name = "fecha_operacion", nullable = false)
+    private LocalDate fechaOperacion;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "jornada", length = 20)
-    private Jornada jornada;
+    // Texto libre proveniente del Excel; se valida contra los enums Jornada/TipoTrayecto en el service.
+    @Column(name = "jornada_turno", length = 20)
+    private String jornadaTurno;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_trayecto", length = 20)
-    private TipoTrayecto tipoTrayecto;
+    private String tipoTrayecto;
+
+    @Column(name = "tarifa_historica", precision = 10, scale = 2)
+    private BigDecimal tarifaHistorica;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", length = 20)
-    private EstadoViaje estado;
+    @Builder.Default
+    private EstadoViaje estado = EstadoViaje.PROGRAMADO;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -13,7 +13,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/importacion")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // Permite peticiones desde el frontend
 public class ImportacionController {
 
     private final ExcelImportService excelImportService;

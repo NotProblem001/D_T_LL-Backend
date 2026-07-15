@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "empresas_clientes")
@@ -19,11 +20,11 @@ import java.time.LocalDateTime;
 public class EmpresaCliente {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(name = "rut", length = 20, nullable = false, unique = true)
-    private String rut;
+    @Column(name = "rut_fiscal", length = 20, nullable = false, unique = true)
+    private String rutFiscal;
 
     @Column(name = "razon_social", length = 255)
     private String razonSocial;
@@ -40,8 +41,8 @@ public class EmpresaCliente {
     @Column(name = "contacto_telefono", length = 50)
     private String contactoTelefono;
 
-    @Column(name = "tarifa_por_viaje", precision = 10, scale = 2)
-    private BigDecimal tarifaPorViaje;
+    @Column(name = "tarifa_base_viaje", precision = 10, scale = 2)
+    private BigDecimal tarifaBaseViaje;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

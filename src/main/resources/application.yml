@@ -2,14 +2,18 @@ spring:
   application:
     name: dtll-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/dtll_db
-    username: postgres
-    password: password
+    # DATABASE_URL, si está definida, debe ser un JDBC URL completo (jdbc:postgresql://...).
+    # En Render, la connectionString del servicio de Postgres viene en formato postgres:// (no JDBC),
+    # por eso el blueprint (render.yaml) inyecta host/puerto/nombre/usuario/password por separado
+    # y se arma el JDBC URL acá.
+    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:dtll_db}}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -17,10 +21,34 @@ spring:
         "[jdbc.batch_size]": 50
         "[order_inserts]": true
         "[order_updates]": true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expirationMs: 86400000 # 24 horas
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 horas
+
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175}
+
+osrm:
+  url: ${OSRM_URL:http://localhost:5000}
+
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  linkedin:
+    client-id: ${LINKEDIN_CLIENT_ID:}
+    client-secret: ${LINKEDIN_CLIENT_SECRET:}
+    redirect-uri: ${LINKEDIN_REDIRECT_URI:}
+
+admin:
+  bootstrap:
+    email: ${ADMIN_BOOTSTRAP_EMAIL:}
+    password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+    nombre: ${ADMIN_BOOTSTRAP_NOMBRE:Administrador DTLL}

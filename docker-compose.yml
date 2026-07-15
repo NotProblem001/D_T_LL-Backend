@@ -1,18 +1,40 @@
 version: '3.8'
 services:
-  mongo:
-    image: mongo:latest
-    container_name: mongo-container
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: dtll-db
+    environment:
+      POSTGRES_DB: dtll_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo-data:/data/db
+      - dtll-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
-      - microservices-network
+      - dtll-network
+
+  osrm:
+    image: osrm/osrm-backend
+    container_name: dtll-osrm
+    # Requiere un extracto .osm.pbf preprocesado (osrm-extract + osrm-partition + osrm-contract)
+    # montado en ./osrm-data. Ver README para el paso de preprocesamiento del extracto de Chile.
+    command: osrm-routed --algorithm mld /data/chile-latest.osrm
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./osrm-data:/data
+    networks:
+      - dtll-network
 
 networks:
-  microservices-network:
+  dtll-network:
     driver: bridge
 
 volumes:
-  mongo-data:
+  dtll-db-data:

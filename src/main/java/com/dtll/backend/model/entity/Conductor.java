@@ -10,6 +10,7 @@ import com.dtll.backend.model.enums.TipoContrato;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "conductores")
@@ -20,11 +21,11 @@ import java.time.LocalDateTime;
 public class Conductor {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(name = "rut", length = 20, nullable = false, unique = true)
-    private String rut;
+    @Column(name = "rut_conductor", length = 20, nullable = false, unique = true)
+    private String rutConductor;
 
     @Column(name = "nombre_completo", length = 255, nullable = false)
     private String nombreCompleto;
@@ -41,6 +42,9 @@ public class Conductor {
 
     @Column(name = "tarifa_por_viaje", precision = 10, scale = 2)
     private BigDecimal tarifaPorViaje;
+
+    @Column(name = "pin_acceso_hash", length = 255)
+    private String pinAccesoHash;
 
     @Column(name = "activo")
     @Builder.Default

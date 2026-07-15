@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "pasajeros")
@@ -18,14 +19,17 @@ import java.time.LocalDateTime;
 public class Pasajero {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
-    private EmpresaCliente empresa;
+    private EmpresaCliente empresaCliente;
 
-    @Column(name = "rut", length = 20, nullable = false, unique = true)
+    @Column(name = "identificador_interno", length = 50, nullable = false, unique = true)
+    private String identificadorInterno;
+
+    @Column(name = "rut", length = 20, unique = true)
     private String rut;
 
     @Column(name = "nombre_completo", length = 255, nullable = false)
@@ -34,11 +38,20 @@ public class Pasajero {
     @Column(name = "direccion_referencia", columnDefinition = "TEXT")
     private String direccionReferencia;
 
+    @Column(name = "punto_parada_asignado", length = 255)
+    private String puntoParadaAsignado;
+
     @Column(name = "comuna", length = 100)
     private String comuna;
 
     @Column(name = "telefono", length = 50)
     private String telefono;
+
+    @Column(name = "latitud")
+    private Double latitud;
+
+    @Column(name = "longitud")
+    private Double longitud;
 
     @Column(name = "activo")
     @Builder.Default

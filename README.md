@@ -2,46 +2,72 @@
 Backend centralizado para la plataforma logística. Gestiona la lógica de negocio, la optimización de rutas y la persistencia de datos segura.
 
 🏗️ Arquitectura y Stack
-Lenguaje: Java 21 LTS
+Lenguaje: Java 17 LTS
 
 Framework: Spring Boot 3.2
 
-Base de Datos: PostgreSQL + PostGIS (Geolocalización)
+Base de Datos: PostgreSQL + PostGIS (Geolocalización), migraciones versionadas con Flyway
 
 Optimización de Rutas: Jsprit (Motor VRP en Java)
 
 Mapas/Ruteo: Conexión a instancia local de OSRM (Open Source Routing Machine)
 
-Seguridad: Spring Security + JWT + Cifrado AES-256 para PII (Datos sensibles).
+Seguridad: Spring Security + JWT (roles ADMIN / EMPRESA / PASAJERO / CONDUCTOR)
 
 🧩 Módulos Principales
+Auth: Login local, Google, LinkedIn (pasajero/empresa/admin) y RUT+PIN (conductor).
+
 Driver API: Endpoints para la app móvil (Checklists, Ubicación GPS).
 
 Admin API: Endpoints para el panel web (Carga Excel, Reportes).
 
-Optimization Engine: Servicio que utiliza Jsprit para calcular el orden eficiente de paradas.
+Optimization Engine: Servicio que utiliza Jsprit + OSRM para calcular el orden eficiente de paradas.
 
 Excel Processor: Servicio asíncrono para leer/escribir archivos .xlsx grandes.
 
 🚀 Ejecución con Docker (Recomendado)
-El proyecto incluye un docker-compose.yml que levanta la Base de Datos y el servicio OSRM.bash
+El proyecto incluye un `docker-compose.yml` que levanta Postgres+PostGIS y OSRM.
 
-1. Levantar infraestructura (DB + OSRM)
-docker-compose up -d
-
-2. Ejecutar la aplicación Spring Boot
-./mvnw spring-boot:run
-
+1. Preprocesar el extracto de OSRM (una sola vez, antes del primer `docker-compose up`):
+   ```bash
+   mkdir -p osrm-data && cd osrm-data
+   curl -O https://download.geofabrik.de/south-america/chile-latest.osm.pbf
+   docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-extract -p /opt/car.lua /data/chile-latest.osm.pbf
+   docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-partition /data/chile-latest.osrm
+   docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-customize /data/chile-latest.osrm
+   ```
+2. Levantar infraestructura (DB + OSRM):
+   ```bash
+   docker-compose up -d
+   ```
+3. Ejecutar la aplicación Spring Boot (las migraciones Flyway corren automáticamente al iniciar):
+   ```bash
+   mvn spring-boot:run
+   ```
 
 ## 📝 Configuración
 
-Configura `src/main/resources/application.properties`:
+Toda la configuración se define vía variables de entorno (ver `src/main/resources/application.yml`), con valores por defecto para desarrollo local:
+
 ```bash
-properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/dondetellevo_db
-spring.datasource.username=postgres
-spring.datasource.password=secret
-app.security.jwt-secret=tu_secreto_super_seguro_para_firmar_tokens
+# Opción A: variables sueltas (las usa render.yaml, construye el JDBC URL automáticamente)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=dtll_db
+DB_USER=postgres
+DB_PASSWORD=password
+# Opción B: JDBC URL completo, tiene prioridad sobre las variables sueltas si se define
+# (útil con proveedores externos como Neon/Supabase que no exponen host/puerto por separado)
+# DATABASE_URL=jdbc:postgresql://host:5432/db?sslmode=require
+JWT_SECRET=tu_secreto_super_seguro_para_firmar_tokens
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175
+OSRM_URL=http://localhost:5000
+GOOGLE_CLIENT_ID=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+LINKEDIN_REDIRECT_URI=
+ADMIN_BOOTSTRAP_EMAIL=admin@dondetellevo.cl
+ADMIN_BOOTSTRAP_PASSWORD=cambia-esta-clave
 ```
 
 ### 4. Repositorio: `D_T_LL Ride-Hailing App`
