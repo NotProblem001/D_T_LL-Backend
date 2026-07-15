@@ -3,7 +3,7 @@ services:
     name: dtll-backend
     runtime: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     healthCheckPath: /actuator/health
     envVars:
       - key: DB_HOST
@@ -31,10 +31,8 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false # URLs de Vercel de Admin/Dashboard/Landing-Page, separadas por coma
       - key: OSRM_URL
-        fromService:
-          type: pserv
-          name: dtll-osrm
-          property: hostport
+        sync: false # Opcional: dejar vacía usa distancia en línea recta (Haversine), sin costo.
+                     # Solo completar si en algún momento se paga un servicio OSRM propio o externo.
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: LINKEDIN_CLIENT_ID
@@ -48,27 +46,16 @@ services:
       - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false
 
-  # Servicio privado de ruteo. Render no soporta descargar el extracto OSM durante el build del
-  # blueprint: el disco debe seedearse manualmente una vez (ver "Preprocesar el extracto de OSRM"
-  # en el README) subiendo /data/chile-latest.osrm.* al disco persistente antes de habilitar el servicio.
-  - type: pserv
-    name: dtll-osrm
-    runtime: image
-    image:
-      url: docker.io/osrm/osrm-backend:latest
-    dockerCommand: osrm-routed --algorithm mld /data/chile-latest.osrm
-    plan: starter
-    disk:
-      name: dtll-osrm-data
-      mountPath: /data
-      sizeGB: 10
-
 databases:
-  # Nota: si el plan de Postgres administrado de Render no habilita la extensión PostGIS,
+  # Nota 1: si el plan de Postgres administrado de Render no habilita la extensión PostGIS,
   # usar en su lugar un proveedor externo compatible (Neon, Supabase): quitar los 5 bindings
   # fromDatabase de dtll-backend y setear DATABASE_URL manualmente con el JDBC URL completo
   # (jdbc:postgresql://host:puerto/db?sslmode=require) como variable sync:false.
+  # Nota 2 (IMPORTANTE): el plan `free` de Postgres en Render se BORRA automáticamente a los
+  # 30 días de creado (no es renovable indefinidamente). Para no perder datos hay que migrar a
+  # un plan pago antes de esa fecha, o usar Neon/Supabase (que sí tienen free tier persistente)
+  # como reemplazo desde el día uno.
   - name: dtll-db
-    plan: starter
+    plan: free
     databaseName: dtll_db
     user: dtll

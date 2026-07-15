@@ -10,7 +10,8 @@ Base de Datos: PostgreSQL + PostGIS (Geolocalización), migraciones versionadas 
 
 Optimización de Rutas: Jsprit (Motor VRP en Java)
 
-Mapas/Ruteo: Conexión a instancia local de OSRM (Open Source Routing Machine)
+Mapas/Ruteo: OSRM (Open Source Routing Machine) si `OSRM_URL` está configurada; si no,
+distancia en línea recta (Haversine) como respaldo sin costo — ver nota en "Configuración".
 
 Seguridad: Spring Security + JWT (roles ADMIN / EMPRESA / PASAJERO / CONDUCTOR)
 
@@ -21,14 +22,16 @@ Driver API: Endpoints para la app móvil (Checklists, Ubicación GPS).
 
 Admin API: Endpoints para el panel web (Carga Excel, Reportes).
 
-Optimization Engine: Servicio que utiliza Jsprit + OSRM para calcular el orden eficiente de paradas.
+Optimization Engine: Servicio que utiliza Jsprit para calcular el orden eficiente de paradas,
+con distancias reales de OSRM cuando está disponible (opcional) o Haversine como respaldo.
 
 Excel Processor: Servicio asíncrono para leer/escribir archivos .xlsx grandes.
 
 🚀 Ejecución con Docker (Recomendado)
-El proyecto incluye un `docker-compose.yml` que levanta Postgres+PostGIS y OSRM.
+El proyecto incluye un `docker-compose.yml` que levanta Postgres+PostGIS y, opcionalmente, OSRM.
 
-1. Preprocesar el extracto de OSRM (una sola vez, antes del primer `docker-compose up`):
+1. (Opcional, solo si quieres distancias reales por calle en local) Preprocesar el extracto de
+   OSRM antes del primer `docker-compose up`:
    ```bash
    mkdir -p osrm-data && cd osrm-data
    curl -O https://download.geofabrik.de/south-america/chile-latest.osm.pbf
@@ -36,6 +39,8 @@ El proyecto incluye un `docker-compose.yml` que levanta Postgres+PostGIS y OSRM.
    docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-partition /data/chile-latest.osrm
    docker run -t -v "$(pwd):/data" osrm/osrm-backend osrm-customize /data/chile-latest.osrm
    ```
+   Si te saltas este paso, simplemente no definas `OSRM_URL` (o déjala vacía): el optimizador de
+   rutas sigue funcionando con distancia en línea recta (Haversine).
 2. Levantar infraestructura (DB + OSRM):
    ```bash
    docker-compose up -d
@@ -44,6 +49,13 @@ El proyecto incluye un `docker-compose.yml` que levanta Postgres+PostGIS y OSRM.
    ```bash
    mvn spring-boot:run
    ```
+
+> **Despliegue gratuito (Render free + Vercel free):** `render.yaml` NO incluye un servicio OSRM,
+> porque los *Private Services* de Render no tienen plan gratuito y el disco persistente que
+> necesita el extracto de OSM tampoco existe en el plan free. En producción gratuita, `OSRM_URL`
+> queda vacía y el backend calcula distancias con Haversine automáticamente (ver `OsrmClient`).
+> Si en algún momento se paga un plan Starter+ de Render (o se hostea OSRM en otro lado), basta
+> con setear `OSRM_URL` como variable de entorno del servicio `dtll-backend` para que se use.
 
 ## 📝 Configuración
 
@@ -62,6 +74,7 @@ DB_PASSWORD=password
 JWT_SECRET=tu_secreto_super_seguro_para_firmar_tokens
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175
 OSRM_URL=http://localhost:5000
+# En producción free (Render), dejar OSRM_URL vacía: usa Haversine automáticamente.
 GOOGLE_CLIENT_ID=
 LINKEDIN_CLIENT_ID=
 LINKEDIN_CLIENT_SECRET=
