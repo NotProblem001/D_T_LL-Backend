@@ -17,7 +17,7 @@
 		<java.version>17</java.version>
 		<jjwt.version>0.11.5</jjwt.version>
 		<poi.version>5.2.5</poi.version>
-		<jsprit.version>1.9.7</jsprit.version>
+		<jsprit.version>1.8</jsprit.version>
 	</properties>
 	<dependencies>
 		<dependency>
