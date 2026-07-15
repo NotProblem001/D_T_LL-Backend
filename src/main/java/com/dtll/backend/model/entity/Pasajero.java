@@ -47,6 +47,10 @@ public class Pasajero {
     @Column(name = "telefono", length = 50)
     private String telefono;
 
+    // SRS 2.4: destino de las notificaciones automáticas (Gmail/SMTP).
+    @Column(name = "email", length = 255)
+    private String email;
+
     @Column(name = "latitud")
     private Double latitud;
 

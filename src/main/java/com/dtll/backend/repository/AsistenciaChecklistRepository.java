@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface AsistenciaChecklistRepository extends JpaRepository<AsistenciaChecklist, UUID> {
     List<AsistenciaChecklist> findByViajeId(UUID viajeId);
+    boolean existsByViajeIdAndPasajeroId(UUID viajeId, UUID pasajeroId);
+    java.util.Optional<AsistenciaChecklist> findByIdAndViajeId(UUID id, UUID viajeId);
 }

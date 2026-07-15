@@ -4,8 +4,8 @@ import com.dtll.backend.dto.tracking.TrackingResponse;
 import com.dtll.backend.dto.tracking.TrackingUpdateRequest;
 import com.dtll.backend.model.entity.Viaje;
 import com.dtll.backend.model.entity.ViajeTracking;
-import com.dtll.backend.repository.ViajeRepository;
 import com.dtll.backend.repository.ViajeTrackingRepository;
+import com.dtll.backend.security.ViajeAccessGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -19,13 +19,13 @@ import java.util.UUID;
 public class TrackingService {
 
     private final ViajeTrackingRepository viajeTrackingRepository;
-    private final ViajeRepository viajeRepository;
+    private final ViajeAccessGuard viajeAccessGuard;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public TrackingResponse actualizarUbicacion(UUID viajeId, TrackingUpdateRequest request) {
-        Viaje viaje = viajeRepository.findById(viajeId)
-                .orElseThrow(() -> new IllegalArgumentException("Viaje no encontrado"));
+        // SRS §3: solo el conductor asignado (o ADMIN) puede emitir la ubicación GPS del viaje.
+        Viaje viaje = viajeAccessGuard.exigirConductorDelViaje(viajeId);
 
         ViajeTracking tracking = viajeTrackingRepository.findById(viajeId)
                 .orElseGet(() -> ViajeTracking.builder().viajeId(viajeId).viaje(viaje).build());
@@ -45,6 +45,8 @@ public class TrackingService {
     }
 
     public TrackingResponse obtenerUltimaUbicacion(UUID viajeId) {
+        // SRS §3: pasajeros solo ven el vehículo de SU viaje; empresas, los de su tenant.
+        viajeAccessGuard.exigirLecturaViaje(viajeId);
         ViajeTracking tracking = viajeTrackingRepository.findById(viajeId)
                 .orElseThrow(() -> new IllegalArgumentException("Aún no hay ubicación registrada para este viaje"));
 

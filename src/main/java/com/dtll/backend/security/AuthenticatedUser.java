@@ -19,6 +19,25 @@ public final class AuthenticatedUser {
         return UUID.fromString(empresaId);
     }
 
+    /** Subject del token: usuarioId (login normal) o conductorId (login por código/PIN). */
+    public static UUID subjectId() {
+        return UUID.fromString(claimsActuales().getSubject());
+    }
+
+    public static String rol() {
+        return claimsActuales().get("rol", String.class);
+    }
+
+    public static boolean esAdmin() {
+        return "ADMIN".equals(rol());
+    }
+
+    /** pasajeroId del claim, o null si el usuario no es pasajero. */
+    public static UUID pasajeroIdONull() {
+        String pasajeroId = claimsActuales().get("pasajeroId", String.class);
+        return pasajeroId == null ? null : UUID.fromString(pasajeroId);
+    }
+
     public static Claims claimsActuales() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getDetails() instanceof Claims claims)) {

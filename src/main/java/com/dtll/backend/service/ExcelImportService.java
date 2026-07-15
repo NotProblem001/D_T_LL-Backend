@@ -30,6 +30,7 @@ public class ExcelImportService {
     private final PasajeroRepository pasajeroRepository;
     private final ViajeRepository viajeRepository;
     private final AsistenciaChecklistRepository asistenciaRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public String procesarExcel(MultipartFile file) {
@@ -58,7 +59,7 @@ public class ExcelImportService {
 
                 // Asumimos formato de columnas:
                 // 0: RUT Empresa, 1: RUT Conductor, 2: Fecha (dd/MM/yyyy), 3: Jornada, 4: Trayecto,
-                // 5: ID Pasajero, 6: Nombre Pasajero, 7: Punto Parada
+                // 5: ID Pasajero, 6: Nombre Pasajero, 7: Punto Parada, 8: Email (opcional)
                 String rutEmpresa = row.getCell(0).getStringCellValue().trim();
                 String rutConductor = row.getCell(1).getStringCellValue().trim();
                 String fechaStr = row.getCell(2).getStringCellValue().trim();
@@ -67,6 +68,7 @@ public class ExcelImportService {
                 String idPasajero = row.getCell(5).getStringCellValue().trim();
                 String nombrePasajero = row.getCell(6).getStringCellValue().trim();
                 String puntoParada = row.getCell(7) != null ? row.getCell(7).getStringCellValue().trim() : "";
+                String emailPasajero = row.getCell(8) != null ? row.getCell(8).getStringCellValue().trim() : null;
 
                 // Validaciones de negocio (si no existen, throw Exception para Rollback)
                 EmpresaCliente empresa = empresaRepository.findByRutFiscal(rutEmpresa)
@@ -81,33 +83,54 @@ public class ExcelImportService {
                                 .identificadorInterno(idPasajero)
                                 .nombreCompleto(nombrePasajero)
                                 .puntoParadaAsignado(puntoParada)
+                                .email(emailPasajero)
                                 .build()));
+
+                // Aislamiento B2B: si el pasajero ya existía, debe pertenecer a la empresa de la fila.
+                if (!pasajero.getEmpresaCliente().getId().equals(empresa.getId())) {
+                    throw new RuntimeException("El pasajero " + idPasajero
+                            + " pertenece a otra empresa; fila rechazada por aislamiento de datos");
+                }
+                if (emailPasajero != null && !emailPasajero.isBlank()
+                        && (pasajero.getEmail() == null || pasajero.getEmail().isBlank())) {
+                    pasajero.setEmail(emailPasajero);
+                    pasajeroRepository.save(pasajero);
+                }
 
                 LocalDate fechaOperacion = LocalDate.parse(fechaStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
-                // Buscar si ya existe el viaje para este conductor, jornada, fecha y trayecto
-                // Para simplificar, generaremos un codigoRuta único o buscaremos uno existente.
-                // En un escenario real, buscaríamos el Viaje existente por fecha, conductor, jornada y trayecto.
-                // Aquí simularemos creando uno nuevo siempre para el MVP, a menos que se agrupe en memoria.
+                // Agrupación: un mismo viaje (conductor+empresa+fecha+jornada+trayecto)
+                // acumula pasajeros en su checklist en lugar de crear un viaje por fila.
+                boolean[] viajeNuevo = {false};
+                Viaje viaje = viajeRepository
+                        .findByEmpresaClienteIdAndConductorIdAndFechaOperacionAndJornadaTurnoAndTipoTrayecto(
+                                empresa.getId(), conductor.getId(), fechaOperacion, jornada, trayecto)
+                        .orElseGet(() -> {
+                            viajeNuevo[0] = true;
+                            return viajeRepository.save(Viaje.builder()
+                                    .codigoRutaLogin(generarCodigoRuta())
+                                    .conductor(conductor)
+                                    .empresaCliente(empresa)
+                                    .fechaOperacion(fechaOperacion)
+                                    .jornadaTurno(jornada)
+                                    .tipoTrayecto(trayecto)
+                                    .tarifaHistorica(empresa.getTarifaBaseViaje())
+                                    .build());
+                        });
+                if (viajeNuevo[0]) {
+                    viajesCreados++;
+                    notificationService.notificarAsignacionConductor(conductor, viaje);
+                }
 
-                // NOTA: Para el MVP, la lógica de agrupación de viajes debe suceder antes o guardar un mapa temporal en memoria.
-                // Vamos a crear el viaje (esto es un ejemplo simplificado).
-                Viaje viaje = viajeRepository.save(Viaje.builder()
-                        .codigoRutaLogin(generarCodigoRuta())
-                        .conductor(conductor)
-                        .empresaCliente(empresa)
-                        .fechaOperacion(fechaOperacion)
-                        .jornadaTurno(jornada)
-                        .tipoTrayecto(trayecto)
-                        .tarifaHistorica(empresa.getTarifaBaseViaje())
-                        .build());
-                viajesCreados++;
-
-                asistenciaRepository.save(AsistenciaChecklist.builder()
-                        .viaje(viaje)
-                        .pasajero(pasajero)
-                        .build());
-                pasajerosRegistrados++;
+                // Idempotencia: re-subir el mismo Excel no duplica asistencias.
+                if (!asistenciaRepository.existsByViajeIdAndPasajeroId(viaje.getId(), pasajero.getId())) {
+                    asistenciaRepository.save(AsistenciaChecklist.builder()
+                            .viaje(viaje)
+                            .pasajero(pasajero)
+                            .build());
+                    pasajerosRegistrados++;
+                    notificationService.notificarAsignacionPasajero(pasajero, viaje);
+                }
             }
 
             log.info("Procesamiento finalizado. Viajes creados: {}, Pasajeros registrados: {}", viajesCreados, pasajerosRegistrados);
@@ -120,6 +143,11 @@ public class ExcelImportService {
     }
 
     private String generarCodigoRuta() {
-        return UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        // Reintenta hasta obtener un código no usado (colisión improbable pero posible).
+        String codigo;
+        do {
+            codigo = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        } while (viajeRepository.existsByCodigoRutaLogin(codigo));
+        return codigo;
     }
 }

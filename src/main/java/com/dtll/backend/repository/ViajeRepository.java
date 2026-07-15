@@ -11,4 +11,8 @@ import java.util.UUID;
 public interface ViajeRepository extends JpaRepository<Viaje, UUID> {
     boolean existsByCodigoRutaLogin(String codigoRutaLogin);
     long countByEmpresaClienteIdAndFechaOperacionBetween(UUID empresaId, LocalDate desde, LocalDate hasta);
+
+    /** Agrupación de la importación Excel: un viaje por conductor+empresa+fecha+jornada+trayecto. */
+    java.util.Optional<Viaje> findByEmpresaClienteIdAndConductorIdAndFechaOperacionAndJornadaTurnoAndTipoTrayecto(
+            UUID empresaId, UUID conductorId, LocalDate fechaOperacion, String jornadaTurno, String tipoTrayecto);
 }

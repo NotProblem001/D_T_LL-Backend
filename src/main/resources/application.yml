@@ -24,6 +24,22 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:} # Gmail: usar App Password, no la contraseña de la cuenta
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+notificaciones:
+  # Si no hay credenciales SMTP configuradas, el servicio solo loguea (no falla).
+  habilitadas: ${NOTIFICACIONES_HABILITADAS:false}
+  remitente: ${MAIL_FROM:no-reply@dondetellevo.cl}
 
 server:
   port: ${PORT:8080}
