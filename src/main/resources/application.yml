@@ -44,6 +44,15 @@ notificaciones:
 server:
   port: ${PORT:8080}
 
+management:
+  health:
+    # El indicador de mail abre una conexión SMTP real en cada probe. Sin credenciales
+    # (el caso por defecto, ver notificaciones.habilitadas) devuelve DOWN y tumba
+    # /actuator/health, que es el health check de Render. El correo es opcional y
+    # degrada a solo loguear, así que no debe condicionar la salud del servicio.
+    mail:
+      enabled: false
+
 jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   expirationMs: ${JWT_EXPIRATION_MS:86400000} # 24 horas
