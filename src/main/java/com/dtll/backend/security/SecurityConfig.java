@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -52,6 +54,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/checklist/**").hasAnyRole("ADMIN", "CONDUCTOR")
                         .requestMatchers("/api/v1/tracking/**").hasAnyRole("CONDUCTOR", "PASAJERO", "ADMIN")
                         .anyRequest().authenticated())
+                // Sin token (o token expirado) → 401, para que los frontends detecten la sesión vencida
+                // y redirijan al login; el 403 queda reservado para tokens válidos sin el rol requerido.
+                .exceptionHandling(eh -> eh.authenticationEntryPoint(
+                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
