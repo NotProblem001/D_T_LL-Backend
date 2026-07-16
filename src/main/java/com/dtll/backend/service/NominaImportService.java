@@ -328,6 +328,102 @@ public class NominaImportService {
         return persistirNomina(empresa, anioFinal, semanaFinal, personas);
     }
 
+    /**
+     * Importa la "Planilla de horarios" interna (hojas "Mañana (Día) 08-16",
+     * "Tarde 16-00", "Noche 00-08" con columnas Nombre|Teléfono|Dirección|Comuna).
+     * Además de registrar la nómina de la semana, completa teléfono/dirección/comuna
+     * de los pasajeros en la BDD. Las hojas de ruta (Lampa/Santiago), "BDD" y listas
+     * auxiliares se ignoran.
+     */
+    @Transactional
+    public NominaImportResponse importarPlanillaTurnos(UUID empresaId, Integer anio, Integer semana,
+                                                       MultipartFile file) {
+        EmpresaCliente empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+
+        List<PersonaTurno> personas = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream(); Workbook wb = new XSSFWorkbook(is)) {
+            for (Sheet sheet : wb) {
+                String turno = turnoDesdeNombreHoja(sheet.getSheetName());
+                if (turno == null) {
+                    continue;
+                }
+                for (Row row : sheet) {
+                    String nombre = celda(row, 0);
+                    String norm = Normalizador.nombre(nombre);
+                    if (norm.isBlank() || norm.length() < 5 || !norm.contains(" ")
+                            || norm.equals("NOMBRE") || NO_NOMBRES.contains(norm) || norm.matches(".*\\d.*")) {
+                        continue; // encabezado, fila vacía o basura
+                    }
+                    String telefono = celda(row, 1);
+                    String direccion = celda(row, 2);
+                    String comuna = celda(row, 3);
+
+                    // Aprovecha los datos de contacto de la planilla para completar la BDD.
+                    Pasajero pasajero = pasajeroRepository
+                            .findFirstByEmpresaClienteIdAndNombreNormalizado(empresaId, norm)
+                            .orElseGet(() -> Pasajero.builder()
+                                    .empresaCliente(empresa)
+                                    .identificadorInterno(generarIdentificador(norm))
+                                    .nombreCompleto(nombre.trim())
+                                    .nombreNormalizado(norm)
+                                    .build());
+                    completarDatos(pasajero, telefono, direccion, comuna);
+                    pasajeroRepository.save(pasajero);
+
+                    personas.add(new PersonaTurno(nombre.trim(), norm, turno, null, null));
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error importando planilla de horarios", e);
+            throw new IllegalArgumentException("No se pudo leer el archivo: " + e.getMessage());
+        }
+
+        if (personas.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No se encontraron pasajeros. ¿El archivo tiene hojas Mañana/Tarde/Noche con columna Nombre?");
+        }
+
+        int anioFinal = anio != null ? anio : detectarAnio(file.getOriginalFilename());
+        Integer semanaArchivo = detectarSemana(file.getOriginalFilename());
+        int semanaFinal = semana != null ? semana
+                : (semanaArchivo != null ? semanaArchivo : LocalDate.now().getDayOfYear() / 7 + 1);
+
+        return persistirNomina(empresa, anioFinal, semanaFinal, personas);
+    }
+
+    /** MANANA/TARDE/NOCHE según el nombre de la hoja; null si no es una hoja de turno. */
+    private String turnoDesdeNombreHoja(String nombreHoja) {
+        String norm = Normalizador.nombre(nombreHoja);
+        if (norm.contains("LAMPA") || norm.contains("SANTIAGO") || norm.contains("BDD")) {
+            return null; // hojas de ruta / base de datos
+        }
+        if (norm.contains("MANANA") || norm.contains("DIA")) return TURNO_MANANA;
+        if (norm.contains("TARDE")) return TURNO_TARDE;
+        if (norm.contains("NOCHE")) return TURNO_NOCHE;
+        return null;
+    }
+
+    /** Semana desde el nombre del archivo, ej: "Planilla horarios semana 29 2026.xlsx". */
+    private Integer detectarSemana(String nombreArchivo) {
+        if (nombreArchivo == null) return null;
+        Matcher m = SEMANA_PATTERN.matcher(Normalizador.nombre(nombreArchivo));
+        return m.find() ? Integer.parseInt(m.group(1)) : null;
+    }
+
+    private int detectarAnio(String nombreArchivo) {
+        if (nombreArchivo != null) {
+            Matcher m = Pattern.compile("(20\\d{2})").matcher(nombreArchivo);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+        }
+        return LocalDate.now().getYear();
+    }
+
     private String turnoDesdeTexto(String norm) {
         if (norm.contains("NOCHE")) return TURNO_NOCHE;
         if (norm.contains("TARDE")) return TURNO_TARDE;

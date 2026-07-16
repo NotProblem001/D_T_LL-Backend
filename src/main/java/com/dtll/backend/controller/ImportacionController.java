@@ -39,6 +39,15 @@ public class ImportacionController {
         return ResponseEntity.ok(nominaImportService.importarNominaSemanal(empresaId, anio, semana, file));
     }
 
+    /** Importa la Planilla de horarios interna (hojas Mañana/Tarde/Noche por turno). */
+    @PostMapping("/planilla")
+    public ResponseEntity<NominaImportResponse> importarPlanilla(@RequestParam("file") MultipartFile file,
+                                                                 @RequestParam UUID empresaId,
+                                                                 @RequestParam(required = false) Integer anio,
+                                                                 @RequestParam(required = false) Integer semana) {
+        return ResponseEntity.ok(nominaImportService.importarPlanillaTurnos(empresaId, anio, semana, file));
+    }
+
     /** Importa la nómina semanal desde texto pegado (formato correo). */
     @PostMapping("/nomina/texto")
     public ResponseEntity<NominaImportResponse> importarNominaTexto(@RequestBody Map<String, String> body) {
