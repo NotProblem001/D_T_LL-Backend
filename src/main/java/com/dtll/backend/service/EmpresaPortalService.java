@@ -1,8 +1,10 @@
 package com.dtll.backend.service;
 
+import com.dtll.backend.dto.empresa.EmpresaListItemResponse;
 import com.dtll.backend.dto.empresa.PasajeroEmpresaResponse;
 import com.dtll.backend.dto.empresa.ReporteFacturacionResponse;
 import com.dtll.backend.dto.empresa.ResumenEmpresaResponse;
+import com.dtll.backend.repository.EmpresaClienteRepository;
 import com.dtll.backend.repository.PasajeroRepository;
 import com.dtll.backend.repository.ReporteFacturacionRepository;
 import com.dtll.backend.repository.ViajeRepository;
@@ -21,6 +23,19 @@ public class EmpresaPortalService {
     private final ViajeRepository viajeRepository;
     private final PasajeroRepository pasajeroRepository;
     private final ReporteFacturacionRepository reporteFacturacionRepository;
+    private final EmpresaClienteRepository empresaClienteRepository;
+
+    /** Listado de empresas para el selector del ADMIN. */
+    public List<EmpresaListItemResponse> empresas() {
+        return empresaClienteRepository.findAll().stream()
+                .map(e -> new EmpresaListItemResponse(
+                        e.getId(),
+                        e.getNombreFantasia() != null && !e.getNombreFantasia().isBlank()
+                                ? e.getNombreFantasia()
+                                : e.getRazonSocial()))
+                .sorted((a, b) -> a.nombre().compareToIgnoreCase(b.nombre()))
+                .toList();
+    }
 
     public ResumenEmpresaResponse resumen(UUID empresaId) {
         YearMonth mesActual = YearMonth.now();
