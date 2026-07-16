@@ -12,4 +12,5 @@ import java.util.UUID;
 public interface PasajeroRepository extends JpaRepository<Pasajero, UUID> {
     Optional<Pasajero> findByIdentificadorInterno(String identificadorInterno);
     List<Pasajero> findByEmpresaClienteIdOrderByNombreCompletoAsc(UUID empresaId);
+    Optional<Pasajero> findFirstByEmpresaClienteIdAndNombreNormalizado(UUID empresaId, String nombreNormalizado);
 }

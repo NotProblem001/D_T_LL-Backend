@@ -82,6 +82,7 @@ public class ExcelImportService {
                                 .empresaCliente(empresa)
                                 .identificadorInterno(idPasajero)
                                 .nombreCompleto(nombrePasajero)
+                                .nombreNormalizado(com.dtll.backend.util.Normalizador.nombre(nombrePasajero))
                                 .puntoParadaAsignado(puntoParada)
                                 .email(emailPasajero)
                                 .build()));

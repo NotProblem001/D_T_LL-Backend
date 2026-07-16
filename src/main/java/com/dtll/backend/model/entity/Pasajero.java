@@ -35,6 +35,10 @@ public class Pasajero {
     @Column(name = "nombre_completo", length = 255, nullable = false)
     private String nombreCompleto;
 
+    /** Nombre en MAYÚSCULAS sin tildes para deduplicar y cruzar nóminas (ver Normalizador). */
+    @Column(name = "nombre_normalizado", length = 255)
+    private String nombreNormalizado;
+
     @Column(name = "direccion_referencia", columnDefinition = "TEXT")
     private String direccionReferencia;
 
