@@ -31,6 +31,12 @@ public final class NombreMatcher {
         if (a == null || b == null || a.isBlank() || b.isBlank()) {
             return 0;
         }
+        // Con varias palabras manda el apareo palabra a palabra: el Jaro-Winkler
+        // del texto completo se infla cuando solo coincide el nombre de pila
+        // ("JORGE ARREDONDO" vs "JORGE BURGOS").
+        if (a.contains(" ") && b.contains(" ")) {
+            return similitudPorTokens(a, b);
+        }
         return Math.max(jaroWinkler(a, b), similitudPorTokens(a, b));
     }
 
