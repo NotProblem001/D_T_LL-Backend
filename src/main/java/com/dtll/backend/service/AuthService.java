@@ -97,11 +97,15 @@ public class AuthService {
     }
 
     public String loginConductor(ConductorLoginRequest request) {
-        Conductor conductor = conductorRepository.findByRutConductor(request.rutConductor())
-                .orElseThrow(() -> new IllegalArgumentException("Credenciales inválidas"));
+        // El RUT se guarda normalizado (sin puntos, con guión): se busca igual,
+        // sin importar cómo lo escriba el conductor en su teléfono.
+        String rut = com.dtll.backend.util.RutUtil.normalizar(request.rutConductor());
+        Conductor conductor = conductorRepository.findByRutConductor(rut)
+                .orElseThrow(() -> new IllegalArgumentException("RUT o PIN incorrectos"));
 
+        String pin = request.pin() == null ? "" : request.pin().trim();
         if (conductor.getPinAccesoHash() == null
-                || !passwordEncoder.matches(request.pin(), conductor.getPinAccesoHash())) {
+                || !passwordEncoder.matches(pin, conductor.getPinAccesoHash())) {
             throw new IllegalArgumentException("Credenciales inválidas");
         }
         if (!Boolean.TRUE.equals(conductor.getActivo())) {

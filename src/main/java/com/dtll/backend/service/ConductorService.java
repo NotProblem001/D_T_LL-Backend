@@ -105,14 +105,9 @@ public class ConductorService {
         }
     }
 
-    /** Normaliza el RUT a formato sin puntos y con guión, ej: 12345678-9. */
+    /** Mismo formato canónico que usa el login RUT+PIN (ver RutUtil). */
     private String normalizarRut(String rut) {
-        if (rut == null) return null;
-        String limpio = rut.replace(".", "").replace(" ", "").toUpperCase();
-        if (!limpio.contains("-") && limpio.length() > 1) {
-            limpio = limpio.substring(0, limpio.length() - 1) + "-" + limpio.charAt(limpio.length() - 1);
-        }
-        return limpio;
+        return com.dtll.backend.util.RutUtil.normalizar(rut);
     }
 
     private String limpiar(String valor) {
