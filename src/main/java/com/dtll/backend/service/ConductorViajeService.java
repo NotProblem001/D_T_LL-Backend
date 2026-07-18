@@ -30,6 +30,7 @@ public class ConductorViajeService {
     private final AsistenciaChecklistRepository asistenciaRepository;
     private final ViajeAccessGuard viajeAccessGuard;
     private final ConfiguracionService configuracionService;
+    private final ViajeSnapshotService viajeSnapshotService;
 
     /** Recorridos del conductor autenticado para una fecha (por defecto hoy). */
     @Transactional(readOnly = true)
@@ -84,6 +85,8 @@ public class ConductorViajeService {
         }
         viaje.setEstado(EstadoViaje.FINALIZADO);
         viaje.setHoraRealTermino(LocalDateTime.now());
+        // Historial inmutable: congela conductor/vehículo/pasajeros al momento del servicio.
+        viajeSnapshotService.congelar(viaje);
         return aResponse(viajeRepository.save(viaje));
     }
 

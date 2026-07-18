@@ -41,6 +41,9 @@ public class PlanificacionService {
     private final VehiculoRepository vehiculoRepository;
     private final EmpresaClienteRepository empresaRepository;
     private final ConfiguracionService configuracionService;
+    private final ViajeCambioRepository viajeCambioRepository;
+    private final ViajeSnapshotService viajeSnapshotService;
+    private final AuditoriaService auditoriaService;
 
     // ------------------------------------------------------------ generación
 
@@ -173,6 +176,9 @@ public class PlanificacionService {
             }
         }
 
+        auditoriaService.registrar("GENERACION", "PLANIFICACION", null,
+                "Generó " + creados.size() + " recorrido(s) para el " + request.fecha()
+                        + " (semana " + request.semana() + "/" + request.anio() + ")");
         return new PropuestaResponse(creados, sinRuta, avisos);
     }
 
@@ -263,6 +269,32 @@ public class PlanificacionService {
                     "El conductor " + conductor.getNombreCompleto());
         }
 
+        // Reemplazar una asignación existente exige motivo y queda en viaje_cambios (sección 8/14).
+        Conductor conductorAnterior = viaje.getConductor();
+        Vehiculo vehiculoAnterior = viaje.getVehiculo();
+        boolean cambioConductor = conductorAnterior != null
+                && (conductor == null || !conductorAnterior.getId().equals(conductor.getId()));
+        boolean cambioVehiculo = vehiculoAnterior != null
+                && (vehiculo == null || !vehiculoAnterior.getId().equals(vehiculo.getId()));
+        if ((cambioConductor || cambioVehiculo)
+                && (request.motivo() == null || request.motivo().isBlank())) {
+            throw new IllegalArgumentException("Indica el motivo del cambio de "
+                    + (cambioConductor && cambioVehiculo ? "conductor y vehículo"
+                        : cambioConductor ? "conductor" : "vehículo"));
+        }
+        if (cambioConductor) {
+            registrarCambio(viaje, ViajeCambio.CAMPO_CONDUCTOR,
+                    conductorAnterior.getNombreCompleto(),
+                    conductor != null ? conductor.getNombreCompleto() : null,
+                    request.motivo());
+        }
+        if (cambioVehiculo) {
+            registrarCambio(viaje, ViajeCambio.CAMPO_VEHICULO,
+                    vehiculoAnterior.getPatente(),
+                    vehiculo != null ? vehiculo.getPatente() : null,
+                    request.motivo());
+        }
+
         viaje.setConductor(conductor);
         viaje.setVehiculo(vehiculo);
         if (viaje.getEstado() == EstadoViaje.BORRADOR || viaje.getEstado() == EstadoViaje.PROGRAMADO
@@ -290,6 +322,12 @@ public class PlanificacionService {
         if (nuevo == EstadoViaje.ASIGNADO && (viaje.getConductor() == null || viaje.getVehiculo() == null)) {
             throw new IllegalStateException("Para marcar ASIGNADO el viaje necesita conductor y vehículo");
         }
+        if (nuevo == EstadoViaje.CANCELADO) {
+            // Un recorrido cancelado también queda congelado en el historial.
+            viajeSnapshotService.congelar(viaje);
+            auditoriaService.registrar("CANCELACION", "VIAJES", viaje.getId(),
+                    "Canceló el recorrido " + descripcionViaje(viaje));
+        }
         viaje.setEstado(nuevo);
         return aResumen(viajeRepository.save(viaje));
     }
@@ -302,7 +340,31 @@ public class PlanificacionService {
                     "Solo se pueden eliminar viajes en borrador; usa Cancelar para el resto");
         }
         // Las paradas, checklist y tracking se eliminan por cascada en la BD.
+        auditoriaService.registrar("ELIMINACION", "VIAJES", viaje.getId(),
+                "Eliminó el borrador " + descripcionViaje(viaje));
         viajeRepository.delete(viaje);
+    }
+
+    private void registrarCambio(Viaje viaje, String campo, String anterior, String nuevo, String motivo) {
+        viajeCambioRepository.save(ViajeCambio.builder()
+                .viaje(viaje)
+                .campo(campo)
+                .valorAnterior(anterior)
+                .valorNuevo(nuevo)
+                .motivo(motivo.trim())
+                .usuarioId(com.dtll.backend.security.AuthenticatedUser.subjectId())
+                .usuarioRol(com.dtll.backend.security.AuthenticatedUser.rol())
+                .build());
+        auditoriaService.registrar("CAMBIO_" + campo, "VIAJES", viaje.getId(),
+                "Cambio de " + campo.toLowerCase() + " en " + descripcionViaje(viaje)
+                        + " — motivo: " + motivo.trim(),
+                anterior, nuevo);
+    }
+
+    private String descripcionViaje(Viaje v) {
+        return v.getTipoTrayecto() + " " + v.getJornadaTurno()
+                + (v.getRuta() != null ? " " + v.getRuta().getNombre() : "")
+                + " del " + v.getFechaOperacion();
     }
 
     // ------------------------------------------------------------ validaciones

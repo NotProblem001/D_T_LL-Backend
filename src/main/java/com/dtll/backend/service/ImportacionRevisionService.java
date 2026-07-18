@@ -38,6 +38,7 @@ public class ImportacionRevisionService {
     private final PasajeroRepository pasajeroRepository;
     private final NominaTurnoRepository nominaTurnoRepository;
     private final ObjectMapper objectMapper;
+    private final AuditoriaService auditoriaService;
 
     // ------------------------------------------------------------------ preview
 
@@ -308,6 +309,11 @@ public class ImportacionRevisionService {
 
         importacion.setEstado(EstadoImportacion.CONFIRMADA);
         importacion.setConfirmadaAt(LocalDateTime.now());
+        auditoriaService.registrar("CONFIRMACION", "IMPORTACIONES", importacion.getId(),
+                "Confirmó la importación " + importacion.getTipo() + " de "
+                        + importacion.getNombreArchivo() + " (semana " + importacion.getSemana()
+                        + "/" + importacion.getAnio() + ", " + importacion.getTotalRegistros()
+                        + " registros)");
         return ImportacionResponse.desde(importacionRepository.save(importacion));
     }
 

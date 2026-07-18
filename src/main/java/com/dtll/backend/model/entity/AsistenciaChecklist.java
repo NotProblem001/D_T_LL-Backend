@@ -46,6 +46,16 @@ public class AsistenciaChecklist {
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
 
+    // Snapshot del pasajero al cierre del recorrido (historial inmutable, sección 14).
+    @Column(name = "pasajero_nombre_snapshot", length = 255)
+    private String pasajeroNombreSnapshot;
+
+    @Column(name = "pasajero_telefono_snapshot", length = 50)
+    private String pasajeroTelefonoSnapshot;
+
+    @Column(name = "pasajero_direccion_snapshot", columnDefinition = "TEXT")
+    private String pasajeroDireccionSnapshot;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

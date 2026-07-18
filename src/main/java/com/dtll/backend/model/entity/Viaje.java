@@ -75,6 +75,35 @@ public class Viaje {
     @Column(name = "hora_real_termino")
     private LocalDateTime horaRealTermino;
 
+    // --- Snapshot al cierre (finalizado/cancelado): el historial conserva lo
+    // --- que existía al momento del servicio aunque cambien los maestros.
+    @Column(name = "conductor_nombre_snapshot", length = 255)
+    private String conductorNombreSnapshot;
+
+    @Column(name = "conductor_rut_snapshot", length = 20)
+    private String conductorRutSnapshot;
+
+    @Column(name = "vehiculo_patente_snapshot", length = 20)
+    private String vehiculoPatenteSnapshot;
+
+    @Column(name = "vehiculo_capacidad_snapshot")
+    private Integer vehiculoCapacidadSnapshot;
+
+    @Column(name = "ruta_nombre_snapshot", length = 150)
+    private String rutaNombreSnapshot;
+
+    @Column(name = "total_pasajeros_snapshot")
+    private Integer totalPasajerosSnapshot;
+
+    @Column(name = "total_transportados_snapshot")
+    private Integer totalTransportadosSnapshot;
+
+    @Column(name = "total_ausentes_snapshot")
+    private Integer totalAusentesSnapshot;
+
+    @Column(name = "total_cancelaciones_snapshot")
+    private Integer totalCancelacionesSnapshot;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", length = 20)
     @Builder.Default
