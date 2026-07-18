@@ -31,6 +31,7 @@ public class ViajeAccessGuard {
             return viaje;
         }
         if (!"CONDUCTOR".equals(AuthenticatedUser.rol())
+                || viaje.getConductor() == null
                 || !viaje.getConductor().getId().equals(AuthenticatedUser.subjectId())) {
             throw new AccessDeniedException("No tienes asignado este viaje");
         }
@@ -45,7 +46,8 @@ public class ViajeAccessGuard {
         }
         String rol = AuthenticatedUser.rol();
         boolean autorizado = switch (rol == null ? "" : rol) {
-            case "CONDUCTOR" -> viaje.getConductor().getId().equals(AuthenticatedUser.subjectId());
+            case "CONDUCTOR" -> viaje.getConductor() != null
+                    && viaje.getConductor().getId().equals(AuthenticatedUser.subjectId());
             case "PASAJERO" -> {
                 UUID pasajeroId = AuthenticatedUser.pasajeroIdONull();
                 yield pasajeroId != null

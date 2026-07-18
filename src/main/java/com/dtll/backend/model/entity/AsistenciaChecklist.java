@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
-import com.dtll.backend.model.enums.EstadoAsistencia;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -31,10 +30,15 @@ public class AsistenciaChecklist {
     @JoinColumn(name = "pasajero_id", nullable = false)
     private Pasajero pasajero;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", length = 20)
+    /**
+     * Código del estado: "PENDIENTE" (inicial) o uno del maestro configurable
+     * estados_asistencia (ASISTIO, NO_ASISTIO, OTRO...). Se valida en el service.
+     */
+    @Column(name = "estado", length = 40)
     @Builder.Default
-    private EstadoAsistencia estado = EstadoAsistencia.PENDIENTE;
+    private String estado = ESTADO_PENDIENTE;
+
+    public static final String ESTADO_PENDIENTE = "PENDIENTE";
 
     @Column(name = "hora_marcaje")
     private LocalDateTime horaMarcaje;
