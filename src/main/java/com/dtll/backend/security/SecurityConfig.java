@@ -50,6 +50,7 @@ public class SecurityConfig {
                         // (los métodos de escritura llevan @PreAuthorize("hasRole('ADMIN')")).
                         .requestMatchers("/api/v1/importacion/**").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/api/v1/maestros/**").hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/api/v1/planificacion/**").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/api/v1/empresa/**").hasAnyRole("EMPRESA", "ADMIN")
                         .requestMatchers("/api/v1/pasajero/**").hasAnyRole("PASAJERO", "ADMIN")
                         .requestMatchers("/api/v1/conductor/**").hasAnyRole("CONDUCTOR", "ADMIN")

@@ -12,4 +12,5 @@ public interface AsistenciaChecklistRepository extends JpaRepository<AsistenciaC
     List<AsistenciaChecklist> findByViajeId(UUID viajeId);
     boolean existsByViajeIdAndPasajeroId(UUID viajeId, UUID pasajeroId);
     java.util.Optional<AsistenciaChecklist> findByIdAndViajeId(UUID id, UUID viajeId);
+    long countByViajeId(UUID viajeId);
 }
