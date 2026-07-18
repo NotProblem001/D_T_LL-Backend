@@ -1,6 +1,8 @@
 package com.dtll.backend.service;
 
 import com.dtll.backend.dto.importacion.NominaImportResponse;
+import com.dtll.backend.dto.importacion.RegistroParseado;
+import com.dtll.backend.dto.importacion.ResultadoParseo;
 import com.dtll.backend.model.entity.EmpresaCliente;
 import com.dtll.backend.model.entity.NominaTurno;
 import com.dtll.backend.model.entity.Pasajero;
@@ -31,6 +33,9 @@ import java.util.regex.Pattern;
  * También importa la hoja "BDD" de la planilla interna histórica
  * (Nombre | Teléfono | Dirección | Comuna) para poblar/actualizar pasajeros
  * sin crear duplicados (dedupe por nombre normalizado dentro de la empresa).
+ *
+ * Los métodos parsear*() extraen las filas sin persistir: los usa el flujo de
+ * revisión (ImportacionRevisionService) para la vista previa con matching.
  */
 @Service
 @RequiredArgsConstructor
@@ -121,7 +126,7 @@ public class NominaImportService {
     }
 
     /** Completa teléfono/dirección/comuna solo con datos útiles. Devuelve true si cambió algo. */
-    private boolean completarDatos(Pasajero p, String telefono, String direccion, String comuna) {
+    public boolean completarDatos(Pasajero p, String telefono, String direccion, String comuna) {
         boolean cambio = false;
         if (p.getNombreNormalizado() == null || p.getNombreNormalizado().isBlank()) {
             p.setNombreNormalizado(Normalizador.nombre(p.getNombreCompleto()));
@@ -165,27 +170,24 @@ public class NominaImportService {
         return limpio;
     }
 
-    private String generarIdentificador(String nombreNormalizado) {
+    public String generarIdentificador(String nombreNormalizado) {
         String slug = nombreNormalizado.replaceAll("[^A-Z0-9]", "");
         String base = slug.substring(0, Math.min(38, slug.length()));
         return "AUTO-" + base + "-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase();
     }
 
     // ---------------------------------------------------------------------
-    // 2) Importación de la nómina semanal (formato "SEM XX" de la empresa cliente)
+    // 2) Parsers (sin persistencia) — los usa también el flujo de revisión
     // ---------------------------------------------------------------------
 
-    @Transactional
-    public NominaImportResponse importarNominaSemanal(UUID empresaId, Integer anio, Integer semana,
-                                                      MultipartFile file) {
-        EmpresaCliente empresa = empresaRepository.findById(empresaId)
-                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
-
-        List<PersonaTurno> personas = new ArrayList<>();
+    /** Nómina matriz del cliente (columnas MAÑANA/TARDE/NOCHE, ej: "SEM 29.xlsx"). */
+    public ResultadoParseo parsearNominaSemanal(MultipartFile file) {
+        List<RegistroParseado> registros = new ArrayList<>();
         Integer semanaDetectada = null;
 
         try (InputStream is = file.getInputStream(); Workbook wb = new XSSFWorkbook(is)) {
             Sheet sheet = wb.getSheetAt(0);
+            String hoja = sheet.getSheetName();
             int colManana = -1;
             int colTarde = -1;
             int colNoche = -1;
@@ -239,48 +241,35 @@ public class NominaImportService {
                 String centroCosto = !colA.isBlank() ? colA.trim() : centroCostoActual;
                 String cargo = colB.isBlank() ? null : colB.trim();
 
-                agregarSiEsNombre(personas, celdas, colManana, TURNO_MANANA, centroCosto, cargo);
-                agregarSiEsNombre(personas, celdas, colTarde, TURNO_TARDE, centroCosto, cargo);
-                agregarSiEsNombre(personas, celdas, colNoche, TURNO_NOCHE, centroCosto, cargo);
+                int numFila = row.getRowNum() + 1;
+                agregarSiEsNombre(registros, celdas, colManana, TURNO_MANANA, centroCosto, cargo, hoja, numFila);
+                agregarSiEsNombre(registros, celdas, colTarde, TURNO_TARDE, centroCosto, cargo, hoja, numFila);
+                agregarSiEsNombre(registros, celdas, colNoche, TURNO_NOCHE, centroCosto, cargo, hoja, numFila);
             }
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error importando nómina semanal", e);
+            log.error("Error parseando nómina semanal", e);
             throw new IllegalArgumentException("No se pudo leer el archivo: " + e.getMessage());
         }
-
-        if (personas.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No se encontraron turnos en el archivo. ¿Es el formato semanal con columnas MAÑANA/TARDE/NOCHE?");
-        }
-
-        int anioFinal = anio != null ? anio : LocalDate.now().getYear();
-        int semanaFinal = semana != null ? semana
-                : (semanaDetectada != null ? semanaDetectada
-                : LocalDate.now().getDayOfYear() / 7 + 1);
-
-        return persistirNomina(empresa, anioFinal, semanaFinal, personas);
+        return new ResultadoParseo(registros, semanaDetectada);
     }
 
     /**
-     * Importa la nómina semanal desde texto pegado (formato correo):
-     * secciones ("Mantención", "Calidad"), encabezados "Turno día/tarde/noche"
-     * y líneas inline "Nombre Apellido turno noche.".
+     * Texto pegado desde un correo: secciones ("Mantención", "Calidad"),
+     * encabezados "Turno día/tarde/noche" y líneas inline "Nombre turno noche.".
      */
-    @Transactional
-    public NominaImportResponse importarNominaTexto(UUID empresaId, Integer anio, Integer semana, String texto) {
-        EmpresaCliente empresa = empresaRepository.findById(empresaId)
-                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+    public List<RegistroParseado> parsearTexto(String texto) {
         if (texto == null || texto.isBlank()) {
             throw new IllegalArgumentException("El texto de la nómina está vacío");
         }
-
-        List<PersonaTurno> personas = new ArrayList<>();
+        List<RegistroParseado> registros = new ArrayList<>();
         String turnoActual = null;
         String seccionActual = null;
+        int numLinea = 0;
 
         for (String lineaRaw : texto.split("\\r?\\n")) {
+            numLinea++;
             String linea = lineaRaw.trim().replaceAll("[.;,]+$", "");
             String norm = Normalizador.nombre(linea);
             if (norm.isBlank() || norm.startsWith("ESTIMAD") || norm.startsWith("ENVIO TURNOS")
@@ -300,8 +289,8 @@ public class NominaImportService {
                 String nombre = inline.group(1).trim();
                 String turno = turnoDesdeTexto("TURNO " + inline.group(2));
                 if (nombre.contains(" ")) {
-                    personas.add(new PersonaTurno(capitalizar(nombre), Normalizador.nombre(nombre),
-                            turno, seccionActual, null));
+                    registros.add(new RegistroParseado(capitalizar(nombre), Normalizador.nombre(nombre),
+                            turno, seccionActual, null, null, null, null, "texto", numLinea, null));
                 }
                 continue;
             }
@@ -314,34 +303,24 @@ public class NominaImportService {
 
             // Nombre simple bajo un encabezado de turno.
             if (turnoActual != null && !norm.matches(".*\\d.*") && norm.length() >= 5) {
-                personas.add(new PersonaTurno(linea, norm, turnoActual, seccionActual, null));
+                registros.add(new RegistroParseado(linea, norm, turnoActual, seccionActual, null,
+                        null, null, null, "texto", numLinea, null));
             }
         }
 
-        if (personas.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No se reconocieron personas con turno en el texto pegado");
+        if (registros.isEmpty()) {
+            throw new IllegalArgumentException("No se reconocieron personas con turno en el texto pegado");
         }
-
-        int anioFinal = anio != null ? anio : LocalDate.now().getYear();
-        int semanaFinal = semana != null ? semana : LocalDate.now().getDayOfYear() / 7 + 1;
-        return persistirNomina(empresa, anioFinal, semanaFinal, personas);
+        return registros;
     }
 
     /**
-     * Importa la "Planilla de horarios" interna (hojas "Mañana (Día) 08-16",
-     * "Tarde 16-00", "Noche 00-08" con columnas Nombre|Teléfono|Dirección|Comuna).
-     * Además de registrar la nómina de la semana, completa teléfono/dirección/comuna
-     * de los pasajeros en la BDD. Las hojas de ruta (Lampa/Santiago), "BDD" y listas
-     * auxiliares se ignoran.
+     * Planilla interna (hojas "Mañana (Día) 08-16", "Tarde 16-00", "Noche 00-08"
+     * con columnas Nombre|Teléfono|Dirección|Comuna). Las hojas de ruta
+     * (Lampa/Santiago), "BDD" y listas auxiliares se ignoran.
      */
-    @Transactional
-    public NominaImportResponse importarPlanillaTurnos(UUID empresaId, Integer anio, Integer semana,
-                                                       MultipartFile file) {
-        EmpresaCliente empresa = empresaRepository.findById(empresaId)
-                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
-
-        List<PersonaTurno> personas = new ArrayList<>();
+    public List<RegistroParseado> parsearPlanilla(MultipartFile file) {
+        List<RegistroParseado> registros = new ArrayList<>();
 
         try (InputStream is = file.getInputStream(); Workbook wb = new XSSFWorkbook(is)) {
             for (Sheet sheet : wb) {
@@ -356,35 +335,83 @@ public class NominaImportService {
                             || norm.equals("NOMBRE") || NO_NOMBRES.contains(norm) || norm.matches(".*\\d.*")) {
                         continue; // encabezado, fila vacía o basura
                     }
-                    String telefono = celda(row, 1);
-                    String direccion = celda(row, 2);
-                    String comuna = celda(row, 3);
-
-                    // Aprovecha los datos de contacto de la planilla para completar la BDD.
-                    Pasajero pasajero = pasajeroRepository
-                            .findFirstByEmpresaClienteIdAndNombreNormalizado(empresaId, norm)
-                            .orElseGet(() -> Pasajero.builder()
-                                    .empresaCliente(empresa)
-                                    .identificadorInterno(generarIdentificador(norm))
-                                    .nombreCompleto(nombre.trim())
-                                    .nombreNormalizado(norm)
-                                    .build());
-                    completarDatos(pasajero, telefono, direccion, comuna);
-                    pasajeroRepository.save(pasajero);
-
-                    personas.add(new PersonaTurno(nombre.trim(), norm, turno, null, null));
+                    registros.add(new RegistroParseado(nombre.trim(), norm, turno, null, null,
+                            celda(row, 1), celda(row, 2), celda(row, 3),
+                            sheet.getSheetName(), row.getRowNum() + 1, null));
                 }
             }
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error importando planilla de horarios", e);
+            log.error("Error parseando planilla de horarios", e);
             throw new IllegalArgumentException("No se pudo leer el archivo: " + e.getMessage());
         }
 
-        if (personas.isEmpty()) {
+        if (registros.isEmpty()) {
             throw new IllegalArgumentException(
                     "No se encontraron pasajeros. ¿El archivo tiene hojas Mañana/Tarde/Noche con columna Nombre?");
+        }
+        return registros;
+    }
+
+    // ---------------------------------------------------------------------
+    // 3) Importación directa legada (parsear + persistir sin revisión)
+    // ---------------------------------------------------------------------
+
+    @Transactional
+    public NominaImportResponse importarNominaSemanal(UUID empresaId, Integer anio, Integer semana,
+                                                      MultipartFile file) {
+        EmpresaCliente empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+
+        ResultadoParseo resultado = parsearNominaSemanal(file);
+        List<RegistroParseado> personas = resultado.registros().stream()
+                .filter(r -> r.error() == null)
+                .toList();
+        if (personas.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No se encontraron turnos en el archivo. ¿Es el formato semanal con columnas MAÑANA/TARDE/NOCHE?");
+        }
+
+        int anioFinal = anio != null ? anio : LocalDate.now().getYear();
+        int semanaFinal = semana != null ? semana
+                : (resultado.semanaDetectada() != null ? resultado.semanaDetectada()
+                : LocalDate.now().getDayOfYear() / 7 + 1);
+
+        return persistirNomina(empresa, anioFinal, semanaFinal, personas);
+    }
+
+    @Transactional
+    public NominaImportResponse importarNominaTexto(UUID empresaId, Integer anio, Integer semana, String texto) {
+        EmpresaCliente empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+
+        List<RegistroParseado> personas = parsearTexto(texto);
+        int anioFinal = anio != null ? anio : LocalDate.now().getYear();
+        int semanaFinal = semana != null ? semana : LocalDate.now().getDayOfYear() / 7 + 1;
+        return persistirNomina(empresa, anioFinal, semanaFinal, personas);
+    }
+
+    @Transactional
+    public NominaImportResponse importarPlanillaTurnos(UUID empresaId, Integer anio, Integer semana,
+                                                       MultipartFile file) {
+        EmpresaCliente empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new IllegalArgumentException("Empresa no encontrada: " + empresaId));
+
+        List<RegistroParseado> personas = parsearPlanilla(file);
+
+        // Aprovecha los datos de contacto de la planilla para completar la BDD.
+        for (RegistroParseado r : personas) {
+            Pasajero pasajero = pasajeroRepository
+                    .findFirstByEmpresaClienteIdAndNombreNormalizado(empresaId, r.nombreNormalizado())
+                    .orElseGet(() -> Pasajero.builder()
+                            .empresaCliente(empresa)
+                            .identificadorInterno(generarIdentificador(r.nombreNormalizado()))
+                            .nombreCompleto(r.nombreOriginal())
+                            .nombreNormalizado(r.nombreNormalizado())
+                            .build());
+            completarDatos(pasajero, r.telefono(), r.direccion(), r.comuna());
+            pasajeroRepository.save(pasajero);
         }
 
         int anioFinal = anio != null ? anio : detectarAnio(file.getOriginalFilename());
@@ -408,13 +435,13 @@ public class NominaImportService {
     }
 
     /** Semana desde el nombre del archivo, ej: "Planilla horarios semana 29 2026.xlsx". */
-    private Integer detectarSemana(String nombreArchivo) {
+    public Integer detectarSemana(String nombreArchivo) {
         if (nombreArchivo == null) return null;
         Matcher m = SEMANA_PATTERN.matcher(Normalizador.nombre(nombreArchivo));
         return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
-    private int detectarAnio(String nombreArchivo) {
+    public int detectarAnio(String nombreArchivo) {
         if (nombreArchivo != null) {
             Matcher m = Pattern.compile("(20\\d{2})").matcher(nombreArchivo);
             if (m.find()) {
@@ -442,7 +469,7 @@ public class NominaImportService {
     }
 
     private NominaImportResponse persistirNomina(EmpresaCliente empresa, int anioFinal, int semanaFinal,
-                                                 List<PersonaTurno> personas) {
+                                                 List<RegistroParseado> personas) {
         UUID empresaId = empresa.getId();
         // Reimportar la misma semana reemplaza la nómina anterior (idempotente).
         nominaTurnoRepository.deleteByEmpresaClienteIdAndAnioAndSemana(empresaId, anioFinal, semanaFinal);
@@ -453,19 +480,19 @@ public class NominaImportService {
         Set<String> vistos = new HashSet<>();
         Map<String, Integer> porTurno = new LinkedHashMap<>();
 
-        for (PersonaTurno pt : personas) {
-            String claveUnica = pt.turno + "|" + pt.nombreNormalizado;
+        for (RegistroParseado pt : personas) {
+            String claveUnica = pt.turno() + "|" + pt.nombreNormalizado();
             if (!vistos.add(claveUnica)) {
                 continue; // duplicado dentro del archivo
             }
 
             Pasajero pasajero = pasajeroRepository
-                    .findFirstByEmpresaClienteIdAndNombreNormalizado(empresaId, pt.nombreNormalizado)
+                    .findFirstByEmpresaClienteIdAndNombreNormalizado(empresaId, pt.nombreNormalizado())
                     .orElseGet(() -> pasajeroRepository.save(Pasajero.builder()
                             .empresaCliente(empresa)
-                            .identificadorInterno(generarIdentificador(pt.nombreNormalizado))
-                            .nombreCompleto(pt.nombreOriginal)
-                            .nombreNormalizado(pt.nombreNormalizado)
+                            .identificadorInterno(generarIdentificador(pt.nombreNormalizado()))
+                            .nombreCompleto(pt.nombreOriginal())
+                            .nombreNormalizado(pt.nombreNormalizado())
                             .build()));
 
             boolean tieneDatos = !vacio(pasajero.getDireccionReferencia()) || !vacio(pasajero.getTelefono());
@@ -473,46 +500,52 @@ public class NominaImportService {
                 conDatos++;
             } else {
                 sinDatos++;
-                sinMatch.add(pt.nombreOriginal + " (" + pt.turno + ")");
+                sinMatch.add(pt.nombreOriginal() + " (" + pt.turno() + ")");
             }
-            porTurno.merge(pt.turno, 1, Integer::sum);
+            porTurno.merge(pt.turno(), 1, Integer::sum);
 
             nominaTurnoRepository.save(NominaTurno.builder()
                     .empresaCliente(empresa)
                     .anio(anioFinal)
                     .semana(semanaFinal)
-                    .turno(pt.turno)
+                    .turno(pt.turno())
                     .pasajero(pasajero)
-                    .nombreOriginal(pt.nombreOriginal)
-                    .nombreNormalizado(pt.nombreNormalizado)
-                    .centroCosto(pt.centroCosto)
-                    .cargo(pt.cargo)
+                    .nombreOriginal(pt.nombreOriginal())
+                    .nombreNormalizado(pt.nombreNormalizado())
+                    .centroCosto(pt.centroCosto())
+                    .cargo(pt.cargo())
                     .build());
         }
 
         return NominaImportResponse.deNomina(anioFinal, semanaFinal, porTurno, conDatos, sinDatos, sinMatch);
     }
 
-    private void agregarSiEsNombre(List<PersonaTurno> personas, List<String> celdas, int col,
-                                   String turno, String centroCosto, String cargo) {
+    /**
+     * Agrega el valor de la celda del turno como persona; si la celda tiene
+     * contenido que no parece un nombre ("12 HORAS"), lo registra como error
+     * para que quede visible en la revisión.
+     */
+    private void agregarSiEsNombre(List<RegistroParseado> registros, List<String> celdas, int col,
+                                   String turno, String centroCosto, String cargo, String hoja, int fila) {
         if (col < 0 || col >= celdas.size()) {
             return;
         }
         String valor = celdas.get(col);
         String norm = Normalizador.nombre(valor);
-        if (norm.isBlank() || norm.length() < 5 || !norm.contains(" ")
-                || NO_NOMBRES.contains(norm) || norm.matches(".*\\d.*")) {
-            return; // vacío, "12 HORAS", horarios, etc.
+        if (norm.isBlank()) {
+            return; // celda vacía: cargo sin titular ese turno
         }
-        personas.add(new PersonaTurno(valor.trim(), norm, turno, centroCosto, cargo));
-    }
-
-    private record PersonaTurno(String nombreOriginal, String nombreNormalizado, String turno,
-                                String centroCosto, String cargo) {
+        if (norm.length() < 5 || !norm.contains(" ") || NO_NOMBRES.contains(norm) || norm.matches(".*\\d.*")) {
+            registros.add(RegistroParseado.conError(valor.trim(), turno, hoja, fila,
+                    "El valor no parece un nombre de persona"));
+            return;
+        }
+        registros.add(new RegistroParseado(valor.trim(), norm, turno, centroCosto, cargo,
+                null, null, null, hoja, fila, null));
     }
 
     // ---------------------------------------------------------------------
-    // 3) Generación de la Planilla de Horarios semanal (xlsx por turnos)
+    // 4) Generación de la Planilla de Horarios semanal (xlsx por turnos)
     // ---------------------------------------------------------------------
 
     @Transactional(readOnly = true)
