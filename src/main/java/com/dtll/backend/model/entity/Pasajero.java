@@ -1,5 +1,6 @@
 package com.dtll.backend.model.entity;
 
+import com.dtll.backend.model.enums.UsoTransporte;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,6 +61,27 @@ public class Pasajero {
 
     @Column(name = "longitud")
     private Double longitud;
+
+    /** NO excluye al pasajero de la generación de rutas (queda en listado aparte). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "utiliza_transporte", length = 20, nullable = false)
+    @Builder.Default
+    private UsoTransporte utilizaTransporte = UsoTransporte.PENDIENTE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sector_id")
+    private Sector sector;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ruta_habitual_id")
+    private Ruta rutaHabitual;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "turno_habitual_id")
+    private Turno turnoHabitual;
+
+    @Column(name = "observaciones", columnDefinition = "TEXT")
+    private String observaciones;
 
     @Column(name = "activo")
     @Builder.Default

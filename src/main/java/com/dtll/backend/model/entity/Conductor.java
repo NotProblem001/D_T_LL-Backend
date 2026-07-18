@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import com.dtll.backend.model.enums.TipoContrato;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -45,6 +46,18 @@ public class Conductor {
 
     @Column(name = "pin_acceso_hash", length = 255)
     private String pinAccesoHash;
+
+    @Column(name = "email", length = 255)
+    private String email;
+
+    @Column(name = "tipo_licencia", length = 20)
+    private String tipoLicencia;
+
+    @Column(name = "fecha_vencimiento_licencia")
+    private LocalDate fechaVencimientoLicencia;
+
+    @Column(name = "observaciones", columnDefinition = "TEXT")
+    private String observaciones;
 
     @Column(name = "activo")
     @Builder.Default

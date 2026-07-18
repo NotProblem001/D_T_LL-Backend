@@ -46,7 +46,10 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/importacion/**").hasRole("ADMIN")
+                        // OPERADOR importa turnos y planifica; los maestros los edita solo ADMIN
+                        // (los métodos de escritura llevan @PreAuthorize("hasRole('ADMIN')")).
+                        .requestMatchers("/api/v1/importacion/**").hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/api/v1/maestros/**").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/api/v1/empresa/**").hasAnyRole("EMPRESA", "ADMIN")
                         .requestMatchers("/api/v1/pasajero/**").hasAnyRole("PASAJERO", "ADMIN")
                         .requestMatchers("/api/v1/conductor/**").hasAnyRole("CONDUCTOR", "ADMIN")
