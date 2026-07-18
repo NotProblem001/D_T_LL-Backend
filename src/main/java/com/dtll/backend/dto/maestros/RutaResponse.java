@@ -15,6 +15,7 @@ public record RutaResponse(
         String conductorHabitualNombre,
         UUID vehiculoHabitualId,
         String vehiculoHabitualPatente,
+        String grupoWhatsapp,
         Boolean activo) {
 
     public static RutaResponse desde(Ruta r) {
@@ -28,6 +29,7 @@ public record RutaResponse(
                 r.getConductorHabitual() != null ? r.getConductorHabitual().getNombreCompleto() : null,
                 r.getVehiculoHabitual() != null ? r.getVehiculoHabitual().getId() : null,
                 r.getVehiculoHabitual() != null ? r.getVehiculoHabitual().getPatente() : null,
+                r.getGrupoWhatsapp(),
                 r.getActivo());
     }
 }

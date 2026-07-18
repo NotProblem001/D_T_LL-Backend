@@ -9,5 +9,6 @@ public record RutaRequest(
         String descripcion,
         List<UUID> sectorIds,
         UUID conductorHabitualId,
-        UUID vehiculoHabitualId) {
+        UUID vehiculoHabitualId,
+        String grupoWhatsapp) {
 }

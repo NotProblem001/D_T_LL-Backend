@@ -85,6 +85,8 @@ public class RutaService {
         ruta.setNombre(request.nombre().trim());
         ruta.setDescripcion(request.descripcion() == null || request.descripcion().isBlank()
                 ? null : request.descripcion().trim());
+        ruta.setGrupoWhatsapp(request.grupoWhatsapp() == null || request.grupoWhatsapp().isBlank()
+                ? null : request.grupoWhatsapp().trim());
 
         List<Sector> sectores = new ArrayList<>();
         if (request.sectorIds() != null) {

@@ -54,6 +54,10 @@ public class Ruta {
     @JoinColumn(name = "vehiculo_habitual_id")
     private Vehiculo vehiculoHabitual;
 
+    /** Nombre o enlace del grupo de WhatsApp de esta ruta (sección 10). */
+    @Column(name = "grupo_whatsapp", length = 255)
+    private String grupoWhatsapp;
+
     @Column(name = "activo")
     @Builder.Default
     private Boolean activo = true;
