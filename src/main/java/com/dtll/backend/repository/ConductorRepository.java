@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface ConductorRepository extends JpaRepository<Conductor, UUID> {
     Optional<Conductor> findByRutConductor(String rutConductor);
+    long countByActivoTrue();
 }

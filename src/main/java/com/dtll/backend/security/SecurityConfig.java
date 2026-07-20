@@ -54,6 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/incidencias/**").hasAnyRole("ADMIN", "OPERADOR", "CONDUCTOR")
                         .requestMatchers("/api/v1/mensajeria/**").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/api/v1/historial/**").hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/api/v1/informes/**").hasAnyRole("ADMIN", "OPERADOR")
                         .requestMatchers("/api/v1/empresa/**").hasAnyRole("EMPRESA", "ADMIN")
                         .requestMatchers("/api/v1/pasajero/**").hasAnyRole("PASAJERO", "ADMIN")
                         .requestMatchers("/api/v1/conductor/**").hasAnyRole("CONDUCTOR", "ADMIN")

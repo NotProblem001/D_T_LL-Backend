@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface VehiculoRepository extends JpaRepository<Vehiculo, UUID> {
     Optional<Vehiculo> findByPatente(String patente);
+    long countByActivoTrueAndEstado(com.dtll.backend.model.enums.EstadoVehiculo estado);
 }

@@ -16,6 +16,9 @@ public interface ViajeRepository extends JpaRepository<Viaje, UUID> {
     java.util.Optional<Viaje> findByEmpresaClienteIdAndConductorIdAndFechaOperacionAndJornadaTurnoAndTipoTrayecto(
             UUID empresaId, UUID conductorId, LocalDate fechaOperacion, String jornadaTurno, String tipoTrayecto);
 
+    java.util.List<Viaje> findByEmpresaClienteIdAndFechaOperacionBetweenOrderByFechaOperacionAscJornadaTurnoAsc(
+            UUID empresaId, LocalDate desde, LocalDate hasta);
+
     // --- Planificación (Etapa 3) ---
 
     java.util.List<Viaje> findByEmpresaClienteIdAndFechaOperacionOrderByJornadaTurnoAscTipoTrayectoAsc(
